@@ -43,6 +43,19 @@ const winProbabilities = {
   }
 };
 
+const TOTAL_WEEKS = 18;
+const HORIZON_WEEKS = 8; // Adjust horizon for performance if needed.
+
+const allTeams = new Set();
+const canonicalTeamMap = new Map();
+
+Object.values(winProbabilities).forEach((matchups) => {
+  Object.keys(matchups).forEach((team) => {
+    allTeams.add(team);
+    canonicalTeamMap.set(team.toLowerCase(), team);
+  });
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   const storageKey = 'lmsPicks';
   const inputs = Array.from(
@@ -50,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
   );
   const recommendButton = document.getElementById('recommend-button');
   const recommendationOutput = document.getElementById('recommendation');
-  const totalWeeks = inputs.length || 18;
+  const totalWeeks = inputs.length || TOTAL_WEEKS;
 
   if (!inputs.length) {
     // No inputs found; nothing to wire up.
@@ -88,6 +101,23 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem(storageKey, JSON.stringify(picks));
   };
 
+  const getCanonicalTeam = (name) =>
+    canonicalTeamMap.get(name.toLowerCase()) || null;
+
+  const buildAvailableTeams = (picks) => {
+    const available = new Set(allTeams);
+    picks.forEach((teamName) => {
+      if (!teamName) {
+        return;
+      }
+      const canonical = getCanonicalTeam(teamName);
+      if (canonical) {
+        available.delete(canonical);
+      }
+    });
+    return available;
+  };
+
   const getCurrentWeek = (picks) => {
     for (let i = 0; i < totalWeeks; i += 1) {
       if (!picks[i]) {
@@ -95,6 +125,73 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     return null;
+  };
+
+  const serializeState = (week, availableTeams) => {
+    if (!availableTeams.size) {
+      return `${week}|`;
+    }
+    const ordered = Array.from(availableTeams).sort();
+    return `${week}|${ordered.join(',')}`;
+  };
+
+  /**
+   * Recursively compute max survival probability from `week` to `endWeek`,
+   * assuming `availableTeams` are still unused. Memoization keeps this fast.
+   */
+  const maxSurvivalProb = (week, availableTeams, endWeek, memo) => {
+    if (week > endWeek) {
+      return 1;
+    }
+
+    const memoKey = serializeState(week, availableTeams);
+    if (memo.has(memoKey)) {
+      return memo.get(memoKey);
+    }
+
+    const weekProbabilities = winProbabilities[week];
+    if (!weekProbabilities) {
+      // No data for this week; move to the next.
+      const skipped = maxSurvivalProb(
+        week + 1,
+        availableTeams,
+        endWeek,
+        memo
+      );
+      memo.set(memoKey, skipped);
+      return skipped;
+    }
+
+    let best = 0;
+    let hasCandidate = false;
+
+    Object.entries(weekProbabilities).forEach(([team, probability]) => {
+      if (!availableTeams.has(team) || typeof probability !== 'number') {
+        return;
+      }
+      if (probability <= 0) {
+        return;
+      }
+      hasCandidate = true;
+
+      const nextAvailable = new Set(availableTeams);
+      nextAvailable.delete(team);
+
+      const futureProb = maxSurvivalProb(
+        week + 1,
+        nextAvailable,
+        endWeek,
+        memo
+      );
+      const survival = probability * futureProb;
+      if (survival > best) {
+        best = survival;
+      }
+    });
+
+    const result = hasCandidate ? best : 0;
+    memo.set(memoKey, result);
+    return result;
   };
 
   const recommendPick = (picks) => {
@@ -113,22 +210,38 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
 
-    const usedTeams = new Set(
-      picks
-        .filter(Boolean)
-        .map((teamName) => teamName.toLowerCase())
+    const availableTeams = buildAvailableTeams(picks);
+    const memo = new Map();
+    const endWeek = Math.min(
+      TOTAL_WEEKS,
+      currentWeek + HORIZON_WEEKS - 1
     );
 
     let bestTeam = null;
     let bestProbability = -1;
 
     Object.entries(weekProbabilities).forEach(([team, probability]) => {
-      if (usedTeams.has(team.toLowerCase())) {
+      if (!availableTeams.has(team) || typeof probability !== 'number') {
         return;
       }
-      if (probability > bestProbability) {
+      if (probability <= 0) {
+        return;
+      }
+
+      const nextAvailable = new Set(availableTeams);
+      nextAvailable.delete(team);
+
+      const futureProb = maxSurvivalProb(
+        currentWeek + 1,
+        nextAvailable,
+        endWeek,
+        memo
+      );
+      const survival = probability * futureProb;
+
+      if (survival > bestProbability) {
+        bestProbability = survival;
         bestTeam = team;
-        bestProbability = probability;
       }
     });
 
