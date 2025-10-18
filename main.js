@@ -272,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (result.team) {
       const percentage = (result.probability * 100).toFixed(1);
-      recommendationOutput.textContent = `Recommended Pick for Week ${result.week}: ${result.team} (${percentage}% win chance)`;
+      recommendationOutput.innerHTML = `<span class="week-label">Recommended Pick for Week ${result.week}</span><strong class="team-name">${result.team}</strong> <span class="probability">(${percentage}% win chance)</span>`;
       return;
     }
 
