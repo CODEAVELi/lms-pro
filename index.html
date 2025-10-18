@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NFL Survivor Pool Helper</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background-color: #f4f6f8;
+      color: #1a1a1a;
+    }
+
+    main {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+      text-align: center;
+    }
+
+    p {
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    form {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      font-weight: 600;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid #ccd1d9;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+
+    button {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background-color: #0d6efd;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0b5ed7;
+    }
+
+    #recommendation {
+      margin-top: 2rem;
+      min-height: 2rem;
+      padding: 1rem;
+      border: 1px dashed #97a0af;
+      border-radius: 4px;
+      background-color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>NFL Last Man Standing Pick Helper</h1>
+    <p>Enter the last name of the team you used each week to get the best pick recommendation for the upcoming week.</p>
+
+    <form id="pick-form">
+      <section aria-labelledby="previous-picks">
+        <h2 id="previous-picks">Previous Picks</h2>
+        <!-- Week inputs -->
+        <div class="week-inputs">
+          <label>
+            <span>Week 1:</span>
+            <input type="text" name="week-1" placeholder="Team name" aria-label="Week 1 pick">
+          </label>
+          <label>
+            <span>Week 2:</span>
+            <input type="text" name="week-2" placeholder="Team name" aria-label="Week 2 pick">
+          </label>
+          <label>
+            <span>Week 3:</span>
+            <input type="text" name="week-3" placeholder="Team name" aria-label="Week 3 pick">
+          </label>
+          <label>
+            <span>Week 4:</span>
+            <input type="text" name="week-4" placeholder="Team name" aria-label="Week 4 pick">
+          </label>
+          <label>
+            <span>Week 5:</span>
+            <input type="text" name="week-5" placeholder="Team name" aria-label="Week 5 pick">
+          </label>
+          <label>
+            <span>Week 6:</span>
+            <input type="text" name="week-6" placeholder="Team name" aria-label="Week 6 pick">
+          </label>
+          <label>
+            <span>Week 7:</span>
+            <input type="text" name="week-7" placeholder="Team name" aria-label="Week 7 pick">
+          </label>
+          <label>
+            <span>Week 8:</span>
+            <input type="text" name="week-8" placeholder="Team name" aria-label="Week 8 pick">
+          </label>
+          <label>
+            <span>Week 9:</span>
+            <input type="text" name="week-9" placeholder="Team name" aria-label="Week 9 pick">
+          </label>
+          <label>
+            <span>Week 10:</span>
+            <input type="text" name="week-10" placeholder="Team name" aria-label="Week 10 pick">
+          </label>
+          <label>
+            <span>Week 11:</span>
+            <input type="text" name="week-11" placeholder="Team name" aria-label="Week 11 pick">
+          </label>
+          <label>
+            <span>Week 12:</span>
+            <input type="text" name="week-12" placeholder="Team name" aria-label="Week 12 pick">
+          </label>
+          <label>
+            <span>Week 13:</span>
+            <input type="text" name="week-13" placeholder="Team name" aria-label="Week 13 pick">
+          </label>
+          <label>
+            <span>Week 14:</span>
+            <input type="text" name="week-14" placeholder="Team name" aria-label="Week 14 pick">
+          </label>
+          <label>
+            <span>Week 15:</span>
+            <input type="text" name="week-15" placeholder="Team name" aria-label="Week 15 pick">
+          </label>
+          <label>
+            <span>Week 16:</span>
+            <input type="text" name="week-16" placeholder="Team name" aria-label="Week 16 pick">
+          </label>
+          <label>
+            <span>Week 17:</span>
+            <input type="text" name="week-17" placeholder="Team name" aria-label="Week 17 pick">
+          </label>
+          <label>
+            <span>Week 18:</span>
+            <input type="text" name="week-18" placeholder="Team name" aria-label="Week 18 pick">
+          </label>
+        </div>
+      </section>
+
+      <button type="button" id="recommend-button">Get Best Pick</button>
+    </form>
+
+    <div id="recommendation" aria-live="polite"></div>
+  </main>
+
+  <script src="main.js"></script>
+</body>
+</html>
