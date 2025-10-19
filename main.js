@@ -124,9 +124,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
+  const defaultPicks = [
+    'Broncos',
+    'Cardinals',
+    'Buccaneers',
+    'Bills',
+    'Lions',
+    'Packers',
+    'Chiefs'
+  ];
+
   const loadPicks = () => {
     const raw = localStorage.getItem(storageKey);
     if (!raw) {
+      weekSelects.forEach((select, index) => {
+        setSelectValue(select, defaultPicks[index] ?? '');
+      });
       updateSelectAvailability();
       return;
     }
