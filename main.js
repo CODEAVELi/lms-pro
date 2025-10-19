@@ -23,7 +23,7 @@ const winProbabilities = {
     Commanders: 0.499,
     Packers: 0.642, // vs Cardinals
     Cardinals: 0.358,
-    49ers: 0.545, // vs Falcons
+    '49ers': 0.545, // vs Falcons
     Falcons: 0.455,
     Lions: 0.616, // vs Buccaneers
     Buccaneers: 0.384,
@@ -56,34 +56,91 @@ Object.values(winProbabilities).forEach((matchups) => {
   });
 });
 
+const teamList = Array.from(allTeams).sort((a, b) => a.localeCompare(b));
+const teamSet = new Set(teamList);
+
 document.addEventListener('DOMContentLoaded', () => {
   const storageKey = 'lmsPicks';
-  const inputs = Array.from(
-    document.querySelectorAll('.week-inputs input[type="text"]')
+  const weekSelects = Array.from(
+    document.querySelectorAll('.week-inputs select')
   );
   const recommendButton = document.getElementById('recommend-button');
   const recommendationOutput = document.getElementById('recommendation');
-  const totalWeeks = inputs.length || TOTAL_WEEKS;
+  const totalWeeks = weekSelects.length || TOTAL_WEEKS;
 
-  if (!inputs.length) {
+  if (!weekSelects.length) {
     // No inputs found; nothing to wire up.
     return;
   }
 
+  const populateSelectOptions = (select) => {
+    const currentValue = select.value;
+    select.innerHTML = '';
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '-- Select team --';
+    select.appendChild(placeholder);
+
+    teamList.forEach((team) => {
+      const option = document.createElement('option');
+      option.value = team;
+      option.textContent = team;
+      select.appendChild(option);
+    });
+
+    if (currentValue && teamSet.has(currentValue)) {
+      select.value = currentValue;
+    } else {
+      select.value = '';
+    }
+  };
+
+  const updateSelectAvailability = () => {
+    const selectedValues = new Set(
+      weekSelects
+        .map((select) => select.value)
+        .filter(Boolean)
+    );
+
+    weekSelects.forEach((select) => {
+      Array.from(select.options).forEach((option) => {
+        if (!option.value) {
+          option.disabled = false;
+          option.hidden = false;
+          return;
+        }
+
+        if (option.value === select.value) {
+          option.disabled = false;
+          option.hidden = false;
+          return;
+        }
+
+        const isTaken = selectedValues.has(option.value);
+        option.disabled = isTaken;
+        option.hidden = isTaken;
+      });
+    });
+  };
+
   const loadPicks = () => {
     const raw = localStorage.getItem(storageKey);
     if (!raw) {
+      updateSelectAvailability();
       return;
     }
 
     try {
       const picks = JSON.parse(raw);
-      inputs.forEach((input, index) => {
+      weekSelects.forEach((select, index) => {
         if (Array.isArray(picks)) {
-          input.value = picks[index] ?? '';
+          setSelectValue(select, picks[index] ?? '');
         } else if (picks && typeof picks === 'object') {
           const weekKey = `week-${index + 1}`;
-          input.value = picks[weekKey] ?? '';
+          setSelectValue(select, picks[weekKey] ?? '');
+        } else {
+          setSelectValue(select, '');
         }
       });
     } catch (error) {
@@ -91,10 +148,11 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('Unable to parse saved picks:', error);
       localStorage.removeItem(storageKey);
     }
+    updateSelectAvailability();
   };
 
   const collectPicks = () =>
-    inputs.map((input) => input.value.trim());
+    weekSelects.map((select) => select.value.trim());
 
   const savePicks = () => {
     const picks = collectPicks();
@@ -103,6 +161,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const getCanonicalTeam = (name) =>
     canonicalTeamMap.get(name.toLowerCase()) || null;
+
+  const setSelectValue = (select, rawValue) => {
+    if (!rawValue) {
+      select.value = '';
+      return;
+    }
+
+    const canonical = getCanonicalTeam(rawValue) || rawValue;
+    if (teamSet.has(canonical)) {
+      select.value = canonical;
+    } else {
+      select.value = '';
+    }
+  };
 
   const buildAvailableTeams = (picks) => {
     const available = new Set(allTeams);
@@ -279,10 +351,14 @@ document.addEventListener('DOMContentLoaded', () => {
     recommendationOutput.textContent = result.message;
   };
 
+  weekSelects.forEach(populateSelectOptions);
   loadPicks();
 
-  inputs.forEach((input) => {
-    input.addEventListener('input', savePicks);
+  weekSelects.forEach((select) => {
+    select.addEventListener('change', () => {
+      updateSelectAvailability();
+      savePicks();
+    });
   });
 
   if (recommendButton) {
