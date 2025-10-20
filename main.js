@@ -1,4 +1,4 @@
-const winProbabilities = {
+const defaultWinProbabilities = {
   7: {
     // Week 7 matchups sourced from ESPN FPI projections.
     Rams: 0.596, // vs Jaguars
@@ -43,21 +43,89 @@ const winProbabilities = {
   }
 };
 
+const winProbabilities = JSON.parse(
+  JSON.stringify(defaultWinProbabilities)
+);
+
 const TOTAL_WEEKS = 18;
 const HORIZON_WEEKS = 8; // Adjust horizon for performance if needed.
 
 const allTeams = new Set();
 const canonicalTeamMap = new Map();
 
-Object.values(winProbabilities).forEach((matchups) => {
+const registerTeams = (matchups) => {
   Object.keys(matchups).forEach((team) => {
     allTeams.add(team);
     canonicalTeamMap.set(team.toLowerCase(), team);
   });
+};
+
+Object.values(winProbabilities).forEach((matchups) => {
+  registerTeams(matchups);
 });
 
-const teamList = Array.from(allTeams).sort((a, b) => a.localeCompare(b));
-const teamSet = new Set(teamList);
+let teamList = Array.from(allTeams).sort((a, b) => a.localeCompare(b));
+let teamSet = new Set(teamList);
+
+const refreshTeamCollections = () => {
+  teamList = Array.from(allTeams).sort((a, b) => a.localeCompare(b));
+  teamSet = new Set(teamList);
+};
+
+const mergeWeekProbabilities = (week, matchups) => {
+  if (!week || typeof matchups !== 'object' || matchups === null) {
+    return false;
+  }
+
+  const cleanedEntries = Object.entries(matchups).filter(
+    ([, probability]) => typeof probability === 'number' && probability > 0
+  );
+
+  if (!cleanedEntries.length) {
+    return false;
+  }
+
+  winProbabilities[week] = Object.fromEntries(cleanedEntries);
+  registerTeams(winProbabilities[week]);
+  refreshTeamCollections();
+  return true;
+};
+
+const fetchWeekProbabilities = async (week) => {
+  try {
+    const response = await fetch(`/api/odds?week=${week}`);
+    if (!response.ok) {
+      console.warn(`Odds API request failed for week ${week}`, response.status);
+      return null;
+    }
+
+    const payload = await response.json();
+    if (!payload || !Array.isArray(payload.events)) {
+      return null;
+    }
+
+    const aggregated = {};
+    payload.events.forEach((event) => {
+      if (!event || typeof event !== 'object') {
+        return;
+      }
+      if (!event.probabilities || typeof event.probabilities !== 'object') {
+        return;
+      }
+      Object.entries(event.probabilities).forEach(([team, probability]) => {
+        if (typeof probability !== 'number' || probability <= 0) {
+          return;
+        }
+        aggregated[team] = Math.max(aggregated[team] ?? 0, probability);
+      });
+    });
+
+    return Object.keys(aggregated).length ? aggregated : null;
+  } catch (error) {
+    console.warn(`Unable to fetch odds for week ${week}`, error);
+    return null;
+  }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   const storageKey = 'lmsPicks';
@@ -162,6 +230,28 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.removeItem(storageKey);
     }
     updateSelectAvailability();
+  };
+
+  const hydrateOddsFromBackend = async () => {
+    if (!weekSelects.length) {
+      return;
+    }
+
+    const weeksToHydrate = weekSelects.map((_, index) => index + 1);
+    const results = await Promise.all(
+      weeksToHydrate.map(async (weekNumber) => {
+        const remote = await fetchWeekProbabilities(weekNumber);
+        if (remote && mergeWeekProbabilities(weekNumber, remote)) {
+          return weekNumber;
+        }
+        return null;
+      })
+    );
+
+    if (results.some(Boolean)) {
+      weekSelects.forEach(populateSelectOptions);
+      updateSelectAvailability();
+    }
   };
 
   const collectPicks = () =>
@@ -382,4 +472,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderRecommendation(recommendation);
     });
   }
+
+  hydrateOddsFromBackend();
 });
